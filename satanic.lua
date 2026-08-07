@@ -33,7 +33,7 @@ local function getHWID()
 end
 
 
-local API_BASE = "https://TU-SITIO.netlify.app/.netlify/functions" -- CAMBIA por tu dominio Netlify
+local API_BASE = "https://fabulous-starlight-c3e2dc.netlify.app/.netlify/functions"
 
 local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
 
