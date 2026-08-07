@@ -186,7 +186,7 @@
     <div class="wrapper">
         <header>
             <h1>// control panel</h1>
-            <button onclick="localStorage.removeItem('nash_token'); window.location.href='/';">Cerrar Sesión</button>
+            <button onclick="localStorage.removeItem('nash_owner_token'); window.location.reload();">Cerrar Sesión</button>
         </header>
 
         <div class="controls">
@@ -287,13 +287,10 @@
             }, 2000);
         }
 
-        // GitHub Pages serves static files. Keys live in keys.json in the repo.
-        const API_BASE = 'https://nashik110d.github.io/StanicNash';
-        const OWNER_TOKEN = 'nash_owner_authenticated_token';
-
         async function loadKeys() {
-            const res = await fetch(`${API_BASE}/keys.json`);
-            const data = await res.json();
+            const token = getToken();
+            const { body } = await api('keys', { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = { keys: body.keys || [] };
             const tbody = document.getElementById('keys-table');
             
             if(!data.keys || data.keys.length === 0) {
@@ -332,47 +329,23 @@
         }
 
         // ============================================================
-        // GITHUB API — Guarda las keys directamente en el repo
+        // NETLIFY API — Backend: listar, crear, reset, eliminar keys
         // ============================================================
-        const REPO_OWNER = 'nashik110d';
-        const REPO_NAME = 'StanicNash';
-        const KEYS_PATH = 'keys.json';
+        const TOKEN = localStorage.getItem('nash_owner_token') || '';
 
         function getToken() {
-            let t = localStorage.getItem('gh_token');
-            if(!t) {
-                t = prompt('GitHub Personal Access Token (para guardar keys):\n\nCrea uno en github.com/settings/tokens con permiso "repo"');
-                if(t) localStorage.setItem('gh_token', t);
-            }
+            let t = localStorage.getItem('nash_owner_token');
+            if(!t) return null;
             return t;
         }
 
-        async function ghGet() {
+        async function api(path, opts = {}) {
             const token = getToken();
-            if(!token) return null;
-            const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${KEYS_PATH}`, {
-                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+            const res = await fetch(`/.netlify/functions/${path}`, {
+                ...opts,
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers||{}) }
             });
-            if(!res.ok) { alert('No se pudo leer keys.json del repo: ' + res.status); return null; }
-            const data = await res.json();
-            const content = decodeURIComponent(escape(atob(data.content)));
-            return { sha: data.sha, json: JSON.parse(content) };
-        }
-
-        async function ghSave(json, sha) {
-            const token = getToken();
-            if(!token) return;
-            const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${KEYS_PATH}`, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: 'Actualizar keys',
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(json, null, 2)))),
-                    sha
-                })
-            });
-            if(!res.ok) { alert('Error guardando keys.json: ' + res.status); return; }
-            loadKeys();
+            return { status: res.status, body: await res.json().catch(() => ({})) };
         }
 
         function genKey() {
@@ -385,33 +358,51 @@
             return `STANIC-${part()}-${part()}-${part()}`;
         }
 
-        document.getElementById('btn-create').addEventListener('click', async () => {
-            const durationMs = parseInt(document.getElementById('duration').value);
-            const expiresAt = durationMs === 0 ? null : Date.now() + durationMs;
-            const newKey = genKey();
+        async function ensureAuth() {
+            let t = getToken();
+            if(t) return true;
 
-            const data = await ghGet();
-            if(!data) return;
-            data.json.keys = data.json.keys || [];
-            data.json.keys.push({ key: newKey, hwid: null, expiresAt, created: Date.now() });
-            await ghSave(data.json, data.sha);
-            showToast();
+            for(let attempt = 0; attempt < 3; attempt++) {
+                const secret = prompt('Ingresa la contraseña de owner:');
+                if(secret === null) return false;
+                try {
+                    const res = await fetch('/.netlify/functions/auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ secret })
+                    });
+                    const data = await res.json();
+                    if(data.token) {
+                        localStorage.setItem('nash_owner_token', data.token);
+                        return true;
+                    }
+                    alert('Contraseña incorrecta.');
+                } catch(e) { alert('Error de conexión con el backend.'); return false; }
+            }
+            return false;
+        }
+
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            if(!getToken() && !(await ensureAuth())) return;
+            const durationMs = parseInt(document.getElementById('duration').value);
+            const r = await api('keys', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'create', duration: durationMs })
+            });
+            if(r.data && r.data.key) showToast();
+            loadKeys();
         });
 
         async function resetHwid(key) {
-            const data = await ghGet();
-            if(!data) return;
-            const k = data.json.keys.find(e => e.key === key);
-            if(k) { k.hwid = null; await ghSave(data.json, data.sha); }
+            await api('keys', { method: 'POST', body: JSON.stringify({ action: 'reset', key }) });
+            loadKeys();
         }
 
         async function deleteKey(key) {
-            const data = await ghGet();
-            if(!data) return;
-            data.json.keys = data.json.keys.filter(e => e.key !== key);
-            await ghSave(data.json, data.sha);
+            await api('keys', { method: 'POST', body: JSON.stringify({ action: 'delete', key }) });
             loadKeys();
         }
+
         loadKeys();
     </script>
 </body>

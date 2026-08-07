@@ -33,7 +33,7 @@ local function getHWID()
 end
 
 
-local API_BASE = "https://nashik110d.github.io/StanicNash" 
+local API_BASE = "https://TU-SITIO.netlify.app/.netlify/functions" -- CAMBIA por tu dominio Netlify
 
 local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
 
@@ -52,21 +52,10 @@ local function apiRequest(method, path, data)
     return nil
 end
 
--- Lee keys.json estático de GitHub Pages y valida localmente
+-- Valida contra Netlify /validate (key + hwid) y vincula el dispositivo
 local function validateKeyRemote(key)
-    local body = apiRequest("GET", "/keys.json")
-    if not body or not body.keys then return false end
-    for _, entry in ipairs(body.keys) do
-        if entry.key == key then
-            if entry.expiresAt and entry.expiresAt ~= 0 and os.time() * 1000 > entry.expiresAt then
-                return false
-            end
-            if entry.hwid and entry.hwid ~= HWID then
-                return false
-            end
-            return true
-        end
-    end
+    local body = apiRequest("POST", "/validate", { key = key, hwid = HWID })
+    if body then return body.valid == true end
     return false
 end
 
@@ -76,7 +65,7 @@ local HWID = getHWID()
 task.spawn(function()
     while true do
         task.wait(30)
-        apiRequest("GET", "/keys.json")
+        apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
     end
 end)
 
@@ -512,7 +501,7 @@ else
 
     -- Check API status on load
     task.spawn(function()
-        local ping = apiRequest("GET", "/keys.json")
+        local ping = apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
         if ping then
             status.Text = "API online - Listo para validar"
             status.TextColor3 = Color3.fromRGB(120, 220, 120)

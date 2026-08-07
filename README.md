@@ -1,63 +1,70 @@
-# Nash.exe — Vault Key System & Voice Panel
+# Nash.exe — Key System & Voice Panel (Netlify)
 
-Sistema de licencias (key system) + panel de voz para Roblox.
-**100% estático, desplegado en GitHub Pages** — sin servidor ni backend externo.
+Sistema de licencias (key system) + panel de voz para Roblox. Web y API desplegadas juntas en **Netlify** (se sube a GitHub y de ahí se importa a Netlify).
 
 ## Estructura
 
 ```
 Satanic_Nash/
-├── index.html        # Panel de owner (gestión de keys)
-├── dashboard.html    # Panel alternativo
-├── keys.json         # Base de datos de keys (archivo estático)
-├── satanic.lua       # Script de Roblox (ejecutor)
-└── README.md
+├── public/                     # Sitio web (frontend)
+│   ├── index.html              # Panel: generar key por tiempo / ver HWID / reset / delete
+│   └── dashboard.html          # Panel alternativo (días)
+├── netlify/functions/          # Backend API (Netlify Functions)
+│   ├── validate.js             # Validación key + HWID (usada por el script Lua)
+│   ├── keys.js                 # CRUD de keys (listar, crear por tiempo, reset HWID, eliminar)
+│   └── auth.js                 # Login de owner
+├── satanic.lua                 # Script de Roblox
+├── netlify.toml                # Config de build + CORS
+└── package.json
 ```
-
-## Cómo funciona
-
-GitHub Pages sirve archivos estáticos. Las keys viven en `keys.json` (en la raíz del repo).
-La web y el script de Roblox leen ese archivo para validar.
-
-- **Generar/borrar keys**: la web usa la **API de GitHub** para escribir `keys.json` directo en el repo (necesitas un token personal, ver abajo).
-- **Script Lua**: `satanic.lua` descarga `keys.json` cada 30 s y valida la key localmente.
-
-## Token de GitHub (para gestionar keys desde la web)
-
-El panel te pide un **Personal Access Token** la primera vez que generas una key. Se guarda en tu navegador (localStorage) y se usa para escribir `keys.json` vía la API de GitHub.
-
-1. Ve a github.com/settings/tokens → **Generate new token (classic)**
-2. Marca el permiso **repo** (acceso completo a repos)
-3. Copia el token y pégalo cuando el panel lo pida
-
-Sin token, la web puede **ver** las keys pero no crearlas/borrarlas.
 
 ## Despliegue
 
-1. Sube el repo a GitHub.
-2. En **Settings → Pages**: Source → `Deploy from a branch` → `main` / root `/`.
-3. El sitio queda en `https://TU-USUARIO.github.io/TU-REPO/`.
+1. Sube este repo a GitHub.
+2. En Netlify: **Add new site → Import an existing project** → selecciona el repo.
+3. Se detecta automáticamente:
+   - Publish directory: `public`
+   - Functions: `netlify/functions`
+4. Configura variables de entorno:
 
-> Aviso de seguridad: al ser código abierto (estático), `keys.json` es visible para cualquiera. Esto es válido para uso personal/demo. Para proteger llaves de venta real necesitarás un backend privado.
+   | Variable | Descripción | Default |
+   |----------|-------------|---------|
+   | `OWNER_SECRET` | Contraseña del login de owner | `nash1234` |
+   | `OWNER_TOKEN` | Token que firma el dashboard | `nash_owner_token` |
+
+5. Deploy.
+
+> Cambia ambas variables para que no queden en los valores por defecto.
+
+## API Endpoints
+
+| Método | Ruta | Autent. | Descripción |
+|--------|------|---------|-------------|
+| `POST` | `/.netlify/functions/validate` | no | Valida key + vincula HWID (script Lua) |
+| `GET`  | `/.netlify/functions/keys` | Bearer token | Lista keys |
+| `POST` | `/.netlify/functions/keys` | Bearer token | `action: create/reset/delete` |
+| `POST` | `/.netlify/functions/auth` | no | Login owner (secret → token) |
+
+### Crear key con duración
+```json
+POST /.netlify/functions/keys
+{ "action": "create", "duration": 86400000 }   // 0 = permanente
+```
 
 ## Configurar el script Lua
 
-En `satanic.lua` (línea 38) la URL debe apuntar a tu GitHub Pages:
+`Satanic.lua` valida contra el backend. Reemplaza `TU-SITIO` con tu dominio Netlify:
 
 ```lua
-local API_BASE = "https://TU-USUARIO.github.io/TU-REPO"
+local API_BASE = "https://tu-sitio.netlify.app/.netlify/functions"
 ```
 
-## keys.json
+El script:
+- Hace health check contra `/validate` cada 30 s.
+- Valida la key + HWID contra el backend (y vincula el dispositivo).
+- Key system centrado, acepta solo Enter, no muestra la URL.
 
-```json
-{
-  "keys": [
-    { "key": "STANIC-XXXX-XXXX-XXXX", "hwid": null, "expiresAt": 4102444800000 },
-    { "key": "STANIC-YYYY-YYYY-YYYY", "hwid": null, "expiresAt": null }
-  ]
-}
-```
+## Notas
 
-- `hwid`: deja `null` para venderla nueva; se llena automáticamente al vincular al script.
-- `expiresAt`: timestamp en ms (0 o `null` = sin límite).
+- El frontend y el API viven en el mismo dominio de Netlify, así que el dashboard usa rutas relativas (`/.netlify/functions/...`) y no hay problemas de CORS para la web.
+- CORS abierto (`*`) para `/.netlify/functions/*` permite que el script de Roblox consuma `/validate` desde cualquier origen.
