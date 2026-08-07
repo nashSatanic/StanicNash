@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nash.exe | Dashboard</title>
+    <style>
+        :root {
+            --bg: #0c0a0b;
+            --rose: #d9a3ad;
+            --rose-bright: #f0c6cf;
+            --silver: #c9c5c8;
+            --border: rgba(217, 163, 173, 0.15);
+            --card-bg: rgba(12, 10, 11, 0.85);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--silver);
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100vh;
+            position: relative;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        #follower {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(217, 163, 173, 0.07) 0%, rgba(12, 10, 11, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            transition: transform 0.1s ease-out;
+        }
+
+        #rain {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.25;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 3;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--card-bg);
+            padding: 1.2rem;
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 { color: var(--rose); font-size: 1.3rem; letter-spacing: 1px; }
+
+        .controls {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        input, select {
+            background: #141113;
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            color: var(--rose-bright);
+            border-radius: 6px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        button {
+            background: rgba(217, 163, 173, 0.12);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            color: var(--rose);
+            border-radius: 6px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover { background: var(--rose); color: var(--bg); transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
+
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        th { background: #141113; color: var(--rose); text-transform: lowercase; letter-spacing: 1px; }
+        
+        @keyframes rowAppear {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes rowDelete {
+            to { opacity: 0; transform: translateX(30px) scale(0.95); background: rgba(255, 107, 107, 0.1); }
+        }
+
+        tr.fade-in {
+            animation: rowAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        tr.fade-out {
+            animation: rowDelete 0.35s ease-in forwards;
+        }
+
+        tr:hover { background: rgba(217, 163, 173, 0.03); }
+
+        .btn-danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); background: rgba(255, 107, 107, 0.05); }
+        .btn-danger:hover { background: #ff6b6b; color: var(--bg); }
+        
+        .hwid-box { cursor: pointer; font-family: monospace; color: #aaa; transition: color 0.2s; }
+        .hwid-box:hover { color: var(--rose-bright); }
+
+        .key-text {
+            color: var(--rose-bright);
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s;
+        }
+        .key-text:hover {
+            color: #fff;
+            text-shadow: 0 0 8px var(--rose);
+        }
+
+        /* Notificación flotante de copia */
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #141113;
+            border: 1px solid var(--rose);
+            color: var(--rose-bright);
+            padding: 0.8rem 1.2rem;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 999;
+        }
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="follower"></div>
+    <canvas id="rain"></canvas>
+    <div id="toast">¡Key copiada al portapapeles!</div>
+
+    <div class="wrapper">
+        <header>
+            <h1>// control panel</h1>
+            <button onclick="localStorage.removeItem('nash_token'); window.location.href='/';">Cerrar Sesión</button>
+        </header>
+
+        <div class="controls">
+            <label style="font-size: 0.85rem; color: var(--rose);">Duración de la Key:</label>
+            <select id="duration">
+                <option value="3600000">1 Hora</option>
+                <option value="86400000" selected>24 Horas</option>
+                <option value="604800000">7 Días</option>
+                <option value="0">Permanente</option>
+            </select>
+            <button id="btn-create">+ Generar Nueva Key</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key (Click para copiar)</th>
+                        <th>Estado HWID</th>
+                        <th>Expiración</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="keys-table">
+                    <tr><td colspan="4" style="text-align:center; color: var(--rose);">Cargando registros...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const follower = document.getElementById('follower');
+        let mouseX = 0, mouseY = 0, followerX = 0, followerY = 0;
+        
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        function animateFollower() {
+            followerX += (mouseX - followerX) * 0.1;
+            followerY += (mouseY - followerY) * 0.1;
+            follower.style.left = `${followerX}px`;
+            follower.style.top = `${followerY}px`;
+            requestAnimationFrame(animateFollower);
+        }
+        animateFollower();
+
+        const canvas = document.getElementById('rain');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#@$%&*<>+-/\\';
+        const fontSize = 14;
+        let columns = Math.floor(canvas.width / fontSize);
+        let drops = Array(columns).fill(1);
+
+        function drawRain() {
+            ctx.fillStyle = 'rgba(12, 10, 11, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#d9a3ad';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawRain, 33);
+
+        const revealedHwids = new Set();
+        function toggleHwid(key, fullHwid) {
+            if(!fullHwid) return;
+            if(revealedHwids.has(key)) revealedHwids.delete(key);
+            else revealedHwids.add(key);
+            loadKeys();
+        }
+
+        function copyKey(keyText) {
+            navigator.clipboard.writeText(keyText).then(() => {
+                showToast();
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        async function loadKeys() {
+            const res = await fetch('/api/keys');
+            const data = await res.json();
+            const tbody = document.getElementById('keys-table');
+            
+            if(!data.keys || data.keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--rose);">No hay keys registradas.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            const now = Date.now();
+
+            data.keys.forEach(k => {
+                const expired = k.expiresAt && now > k.expiresAt;
+                let hwidDisplay = '<span style="color:#777;">Sin vincular</span>';
+                if(k.hwid) {
+                    if(revealedHwids.has(k.key)) {
+                        hwidDisplay = `<span class="hwid-box" title="Click para ocultar" onclick="toggleHwid('${k.key}', '${k.hwid}')">${k.hwid} (Ocultar)</span>`;
+                    } else {
+                        hwidDisplay = `<span class="hwid-box" title="Click para ver completo" onclick="toggleHwid('${k.key}', '${k.hwid}')">${k.hwid.substring(0, 8)}... (Ver)</span>`;
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'fade-in';
+                tr.id = `row-${k.key}`;
+                tr.innerHTML = `
+                    <td><span class="key-text" title="Click para copiar" onclick="copyKey('${k.key}')">${k.key}</span></td>
+                    <td>${hwidDisplay}</td>
+                    <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Permanente'} ${expired ? '<span style="color:#ff6b6b; font-weight:bold;">(Expirada)</span>' : ''}</td>
+                    <td>
+                        ${k.hwid ? `<button onclick="resetHwid('${k.key}')" style="margin-right: 5px;">Reset HWID</button>` : ''}
+                        <button class="btn-danger" onclick="deleteKey('${k.key}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            const duration = document.getElementById('duration').value;
+            await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ duration: parseInt(duration) })
+            });
+            loadKeys();
+        });
+
+        async function resetHwid(key) {
+            await fetch('/api/reset-hwid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            });
+            loadKeys();
+        }
+
+        async function deleteKey(key) {
+            const row = document.getElementById(`row-${key}`);
+            if(row) {
+                row.classList.add('fade-out');
+                await new Promise(r => setTimeout(r, 330));
+            }
+            
+            await fetch('/api/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            });
+            loadKeys();
+        }
+
+        loadKeys();
+    </script>
+</body>
+</html>

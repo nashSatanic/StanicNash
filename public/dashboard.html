@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nash.exe | Dashboard</title>
+    <style>
+        :root {
+            --bg: #0c0a0b;
+            --rose: #d9a3ad;
+            --rose-bright: #f0c6cf;
+            --silver: #c9c5c8;
+            --border: rgba(217, 163, 173, 0.15);
+            --card-bg: rgba(12, 10, 11, 0.85);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--silver);
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100vh;
+            position: relative;
+            padding: 2rem;
+        }
+
+        #follower {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(217, 163, 173, 0.07) 0%, rgba(12, 10, 11, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        #rain {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.25;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 3;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+            background: var(--card-bg);
+            padding: 1.2rem;
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 { color: var(--rose); font-size: 1.3rem; letter-spacing: 1px; }
+
+        .controls {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        input, select {
+            background: #141113;
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            color: var(--rose-bright);
+            border-radius: 6px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        button {
+            background: rgba(217, 163, 173, 0.12);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1.2rem;
+            color: var(--rose);
+            border-radius: 6px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: var(--rose); color: var(--bg); }
+
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        th { background: #141113; color: var(--rose); text-transform: lowercase; letter-spacing: 1px; }
+        tr:hover { background: rgba(217, 163, 173, 0.02); }
+
+        .btn-danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
+        .btn-danger:hover { background: #ff6b6b; color: var(--bg); }
+    </style>
+</head>
+<body>
+
+    <div id="follower"></div>
+    <canvas id="rain"></canvas>
+
+    <div class="wrapper">
+        <header>
+            <h1>// control panel</h1>
+            <button onclick="localStorage.removeItem('nash_token'); window.location.href='/';">Cerrar Sesión</button>
+        </header>
+
+        <div class="controls">
+            <label style="font-size: 0.85rem; color: var(--rose);">Días de validez:</label>
+            <input type="number" id="days" value="30" style="width: 120px;">
+            <button id="btn-create">Generar Nueva Key</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Estado HWID</th>
+                        <th>Expiración</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="keys-table">
+                    <tr><td colspan="4" style="text-align:center; color: var(--rose);">Cargando registros...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('nash_token');
+        if(!token) window.location.href = '/';
+
+        // Animaciones de fondo
+        const follower = document.getElementById('follower');
+        window.addEventListener('mousemove', (e) => {
+            follower.style.left = `${e.clientX}px`;
+            follower.style.top = `${e.clientY}px`;
+        });
+
+        const canvas = document.getElementById('rain');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#@$%&*<>+-/\\';
+        const fontSize = 14;
+        let columns = Math.floor(canvas.width / fontSize);
+        let drops = Array(columns).fill(1);
+
+        function draw() {
+            ctx.fillStyle = 'rgba(12, 10, 11, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#d9a3ad';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(draw, 33);
+
+        // Funciones del Dashboard (CRUD)
+        async function loadKeys() {
+            const res = await fetch('/.func/functions/keys?action=list', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.status === 401) { localStorage.removeItem('nash_token'); window.location.href='/'; return; }
+            const data = await res.json();
+            const tbody = document.getElementById('keys-table');
+            tbody.innerHTML = '';
+            
+            if(!data.keys || data.keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No hay keys registradas.</td></tr>`;
+                return;
+            }
+
+            data.keys.forEach(k => {
+                const expired = k.expiresAt && Date.now() > k.expiresAt;
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="color:var(--rose-bright); font-weight:bold;">${k.key}</td>
+                        <td>${k.hwid ? `<span title="${k.hwid}">${k.hwid.substring(0, 15)}...</span>` : '<span style="color:#777;">Sin vincular</span>'}</td>
+                        <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Sin límite'} ${expired ? '<span style="color:#ff6b6b; font-weight:bold;">(Expirada)</span>' : ''}</td>
+                        <td>
+                            ${k.hwid ? `<button onclick="resetHwid('${k.key}')" style="margin-right: 5px;">Reset HWID</button>` : ''}
+                            <button class="btn-danger" onclick="deleteKey('${k.key}')">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            const days = document.getElementById('days').value;
+            await fetch('/.func/functions/keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'create', days: parseInt(days) })
+            });
+            loadKeys();
+        });
+
+        async function resetHwid(key) {
+            await fetch('/.func/functions/keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'reset', key })
+            });
+            loadKeys();
+        }
+
+        async function deleteKey(key) {
+            if(!confirm(`¿Deseas eliminar permanentemente la key: ${key}?`)) return;
+            await fetch('/.func/functions/keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'delete', key })
+            });
+            loadKeys();
+        }
+
+        loadKeys();
+    </script>
+</body>
+</html>
