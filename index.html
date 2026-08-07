@@ -287,14 +287,12 @@
             }, 2000);
         }
 
-        // Backend externo (Netlify Functions). CHANGE to your site URL.
-        const API_BASE = 'https://TU-SITIO.netlify.app/.func/functions';
+        // GitHub Pages serves static files. Keys live in keys.json in the repo.
+        const API_BASE = 'https://nashik110d.github.io/StanicNash';
         const OWNER_TOKEN = 'nash_owner_authenticated_token';
 
         async function loadKeys() {
-            const res = await fetch(`${API_BASE}/keys?action=list`, {
-                headers: { 'Authorization': `Bearer ${OWNER_TOKEN}` }
-            });
+            const res = await fetch(`${API_BASE}/keys.json`);
             const data = await res.json();
             const tbody = document.getElementById('keys-table');
             
@@ -333,40 +331,19 @@
             });
         }
 
-        document.getElementById('btn-create').addEventListener('click', async () => {
-            const duration = document.getElementById('duration').value;
-            const days = Math.round((parseInt(duration) / (24 * 60 * 60 * 1000)) || 30);
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
-                body: JSON.stringify({ action: 'create', days })
-            });
-            loadKeys();
+        // GitHub Pages solo sirve estático: generar/eliminar keys es de solo lectura.
+        document.getElementById('btn-create').addEventListener('click', () => {
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
         });
 
         async function resetHwid(key) {
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
-                body: JSON.stringify({ action: 'reset', key })
-            });
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
             loadKeys();
         }
 
         async function deleteKey(key) {
-            const row = document.getElementById(`row-${key}`);
-            if(row) {
-                row.classList.add('fade-out');
-                await new Promise(r => setTimeout(r, 330));
-            }
-            
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
-                body: JSON.stringify({ action: 'delete', key })
-            });
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
             loadKeys();
-        }
 
         loadKeys();
     </script>

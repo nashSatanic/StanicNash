@@ -33,9 +33,9 @@ local function getHWID()
 end
 
 -- ==========================================
--- API + HTTP (Netlify)
+-- API + HTTP (GitHub Pages static keys.json)
 -- ==========================================
-local API_BASE = "https://nashsatanic.netlify.app/.func/functions" -- CAMBIA ESTO A TU URL DE NETLIFY
+local API_BASE = "https://nashik110d.github.io/StanicNash" -- ruta raíz de github pages
 
 local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
 
@@ -54,13 +54,31 @@ local function apiRequest(method, path, data)
     return nil
 end
 
+-- Lee keys.json estático de GitHub Pages y valida localmente
+local function validateKeyRemote(key)
+    local body = apiRequest("GET", "/keys.json")
+    if not body or not body.keys then return false end
+    for _, entry in ipairs(body.keys) do
+        if entry.key == key then
+            if entry.expiresAt and entry.expiresAt ~= 0 and os.time() * 1000 > entry.expiresAt then
+                return false
+            end
+            if entry.hwid and entry.hwid ~= HWID then
+                return false
+            end
+            return true
+        end
+    end
+    return false
+end
+
 local HWID = getHWID()
 
 -- Periodic API health check (every 30s)
 task.spawn(function()
     while true do
         task.wait(30)
-        apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
+        apiRequest("GET", "/keys.json")
     end
 end)
 
@@ -343,12 +361,6 @@ local function validateKeyFormat(key)
     return key:match("^STANIC%-[A-Z0-9]+%-[A-Z0-9]+%-[A-Z0-9]+") ~= nil
 end
 
-local function validateKeyRemote(key)
-    local body = apiRequest("POST", "/validate", { key = key, hwid = HWID })
-    if body then return body.valid == true end
-    return false
-end
-
 local function loadSavedLicense()
     local path = KEY_FOLDER .. "/" .. KEY_FILE
     if not isfile(path) then return false end
@@ -502,7 +514,7 @@ else
 
     -- Check API status on load
     task.spawn(function()
-        local ping = apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
+        local ping = apiRequest("GET", "/keys.json")
         if ping then
             status.Text = "API online - Listo para validar"
             status.TextColor3 = Color3.fromRGB(120, 220, 120)

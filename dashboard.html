@@ -154,8 +154,8 @@
     </div>
 
     <script>
-        // Backend externo (Netlify Functions). CHANGE to your site URL.
-        const API_BASE = 'https://TU-SITIO.netlify.app/.func/functions';
+        // GitHub Pages serves static files. Keys live in keys.json in the repo.
+        const API_BASE = 'https://nashik110d.github.io/StanicNash';
         const token = localStorage.getItem('nash_token');
         if(!token) window.location.href = '/';
 
@@ -194,12 +194,9 @@
         }
         setInterval(draw, 33);
 
-        // Funciones del Dashboard (CRUD)
+        // Funciones del Dashboard (solo lectura - GitHub Pages estático)
         async function loadKeys() {
-            const res = await fetch(`${API_BASE}/keys?action=list`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if(res.status === 401) { localStorage.removeItem('nash_token'); window.location.href='/'; return; }
+            const res = await fetch(`${API_BASE}/keys.json`);
             const data = await res.json();
             const tbody = document.getElementById('keys-table');
             tbody.innerHTML = '';
@@ -225,32 +222,17 @@
             });
         }
 
-        document.getElementById('btn-create').addEventListener('click', async () => {
-            const days = document.getElementById('days').value;
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'create', days: parseInt(days) })
-            });
-            loadKeys();
+        document.getElementById('btn-create').addEventListener('click', () => {
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
         });
 
         async function resetKey(key) {
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'reset', key })
-            });
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
             loadKeys();
         }
 
         async function deleteKey(key) {
-            if(!confirm(`¿Deseas eliminar permanentemente la key: ${key}?`)) return;
-            await fetch(`${API_BASE}/keys`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'delete', key })
-            });
+            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
             loadKeys();
         }
 
