@@ -19,8 +19,18 @@ Satanic_Nash/
 GitHub Pages sirve archivos estáticos. Las keys viven en `keys.json` (en la raíz del repo).
 La web y el script de Roblox leen ese archivo para validar.
 
-- **Editar keys**: modifica `keys.json` y haz push → se actualiza el sitio y la validación.
+- **Generar/borrar keys**: la web usa la **API de GitHub** para escribir `keys.json` directo en el repo (necesitas un token personal, ver abajo).
 - **Script Lua**: `satanic.lua` descarga `keys.json` cada 30 s y valida la key localmente.
+
+## Token de GitHub (para gestionar keys desde la web)
+
+El panel te pide un **Personal Access Token** la primera vez que generas una key. Se guarda en tu navegador (localStorage) y se usa para escribir `keys.json` vía la API de GitHub.
+
+1. Ve a github.com/settings/tokens → **Generate new token (classic)**
+2. Marca el permiso **repo** (acceso completo a repos)
+3. Copia el token y pégalo cuando el panel lo pida
+
+Sin token, la web puede **ver** las keys pero no crearlas/borrarlas.
 
 ## Despliegue
 

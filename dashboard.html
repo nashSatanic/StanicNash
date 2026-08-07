@@ -222,17 +222,84 @@
             });
         }
 
-        document.getElementById('btn-create').addEventListener('click', () => {
-            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
-        });
+        // ============================================================
+        // GITHUB API — Guarda las keys directamente en el repo
+        // ============================================================
+        const REPO_OWNER = 'nashik110d';
+        const REPO_NAME = 'StanicNash';
+        const KEYS_PATH = 'keys.json';
 
-        async function resetKey(key) {
-            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
+        function getToken() {
+            let t = localStorage.getItem('gh_token');
+            if(!t) {
+                t = prompt('GitHub Personal Access Token (para guardar keys):\n\nCrea uno en github.com/settings/tokens con permiso "repo"');
+                if(t) localStorage.setItem('gh_token', t);
+            }
+            return t;
+        }
+
+        async function ghGet() {
+            const token = getToken();
+            if(!token) return null;
+            const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${KEYS_PATH}`, {
+                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+            });
+            if(!res.ok) { alert('No se pudo leer keys.json del repo: ' + res.status); return null; }
+            const data = await res.json();
+            const content = decodeURIComponent(escape(atob(data.content)));
+            return { sha: data.sha, json: JSON.parse(content) };
+        }
+
+        async function ghSave(json, sha) {
+            const token = getToken();
+            if(!token) return;
+            const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${KEYS_PATH}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'Actualizar keys',
+                    content: btoa(unescape(encodeURIComponent(JSON.stringify(json, null, 2)))),
+                    sha
+                })
+            });
+            if(!res.ok) { alert('Error guardando keys.json: ' + res.status); return; }
             loadKeys();
         }
 
+        function genKey() {
+            const part = () => {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let s = '';
+                for(let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+                return s;
+            };
+            return `STANIC-${part()}-${part()}-${part()}`;
+        }
+
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            const days = parseInt(document.getElementById('days').value) || 30;
+            const expiresAt = days === 0 ? null : Date.now() + (days * 24 * 60 * 60 * 1000);
+            const newKey = genKey();
+
+            const data = await ghGet();
+            if(!data) return;
+            data.json.keys = data.json.keys || [];
+            data.json.keys.push({ key: newKey, hwid: null, expiresAt, created: Date.now() });
+            await ghSave(data.json, data.sha);
+        });
+
+        async function resetKey(key) {
+            const data = await ghGet();
+            if(!data) return;
+            const k = data.json.keys.find(e => e.key === key);
+            if(k) { k.hwid = null; await ghSave(data.json, data.sha); }
+        }
+
         async function deleteKey(key) {
-            alert('Backend estático (GitHub Pages): edita keys.json en el repo y haz push.');
+            const data = await ghGet();
+            if(!data) return;
+            data.json.keys = data.json.keys.filter(e => e.key !== key);
+            await ghSave(data.json, data.sha);
             loadKeys();
         }
 

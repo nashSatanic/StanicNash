@@ -32,10 +32,8 @@ local function getHWID()
     return hwid
 end
 
--- ==========================================
--- API + HTTP (GitHub Pages static keys.json)
--- ==========================================
-local API_BASE = "https://nashik110d.github.io/StanicNash" -- ruta raíz de github pages
+
+local API_BASE = "https://nashik110d.github.io/StanicNash" 
 
 local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
 
