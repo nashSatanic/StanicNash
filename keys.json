@@ -1,10 +1,16 @@
 {
   "keys": [
     {
-      "key": "STANIC-DEMO-0001-ABC1",
+      "key": "STANIC-DEMO-0001",
       "hwid": null,
-      "created": 1780000000000,
-      "expiresAt": null
+      "expiresAt": 4102444800000,
+      "created": 1733443200000
+    },
+    {
+      "key": "STANIC-DEMO-0002",
+      "hwid": null,
+      "expiresAt": null,
+      "created": 1733443200000
     }
   ]
 }
