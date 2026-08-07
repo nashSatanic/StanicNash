@@ -33,41 +33,18 @@ local function getHWID()
 end
 
 
-local API_BASE = "https://fabulous-starlight-c3e2dc.netlify.app/.netlify/functions"
+-- ==========================================
+-- KEY ÚNICA (sin API)
+-- ==========================================
+local LICENSE_KEY = "NashSatanic"
 
-local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
-
-local function apiRequest(method, path, data)
-    if not httpfunc then return nil end
-    local ok, res = pcall(httpfunc, {
-        Url = API_BASE .. path,
-        Method = method,
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = data and httpService:JSONEncode(data) or nil
-    })
-    if ok and res and (res.StatusCode == 200 or res.Success) then
-        local ok2, body = pcall(function() return httpService:JSONDecode(res.Body) end)
-        if ok2 then return body end
-    end
-    return nil
-end
-
--- Valida contra Netlify /validate (key + hwid) y vincula el dispositivo
+-- Valida que la key ingresada sea exactamente la key maestra
 local function validateKeyRemote(key)
-    local body = apiRequest("POST", "/validate", { key = key, hwid = HWID })
-    if body then return body.valid == true end
-    return false
+    if not key or type(key) ~= "string" then return false end
+    return key == LICENSE_KEY
 end
 
 local HWID = getHWID()
-
--- Periodic API health check (every 30s)
-task.spawn(function()
-    while true do
-        task.wait(30)
-        apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
-    end
-end)
 
 local LIME = Color3.fromRGB(163, 255, 51)
 local RED = Color3.fromRGB(255, 60, 60)
@@ -333,7 +310,7 @@ end)
 repeat task.wait(0.1) until loaderDone
 
 -- ==========================================
--- HWID KEY SYSTEM (Single Device) - Netlify API
+-- KEY SYSTEM (single key, sin API)
 -- ==========================================
 local KEY_FOLDER = "Nash_Vault"
 local KEY_FILE = "license.json"
@@ -345,7 +322,7 @@ end)
 
 local function validateKeyFormat(key)
     if not key or type(key) ~= "string" then return false end
-    return key:match("^STANIC%-[A-Z0-9]+%-[A-Z0-9]+%-[A-Z0-9]+") ~= nil
+    return validateKeyRemote(key)
 end
 
 local function loadSavedLicense()
@@ -455,7 +432,7 @@ else
     input.Position = UDim2.new(0, 16, 0, 108)
     input.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
     input.BorderColor3 = BORDER_DEFAULT
-    input.PlaceholderText = "STANIC-XXXX-XXXX-XXXX"
+    input.PlaceholderText = "Ingresa tu key..."
     input.PlaceholderColor3 = Color3.fromRGB(80, 80, 90)
     input.Text = ""
     input.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -469,7 +446,7 @@ else
     status.Size = UDim2.new(1, -32, 0, 18)
     status.Position = UDim2.new(0, 16, 0, 156)
     status.BackgroundTransparency = 1
-    status.Text = "Comprobando API..."
+    status.Text = "Esperando key..."
     status.TextColor3 = Color3.fromRGB(255, 220, 100)
     status.TextSize = 11
     status.Font = Enum.Font.Gotham
@@ -499,26 +476,17 @@ else
     footer.TextXAlignment = Enum.TextXAlignment.Left
     footer.Parent = main
 
-    -- Check API status on load
-    task.spawn(function()
-        local ping = apiRequest("POST", "/validate", { key = "health_check", hwid = HWID })
-        if ping then
-            status.Text = "API online - Listo para validar"
-            status.TextColor3 = Color3.fromRGB(120, 220, 120)
-        else
-            status.Text = "API offline - Verifica tu conexion / URL Netlify"
-            status.TextColor3 = Color3.fromRGB(255, 80, 80)
-        end
-    end)
+    status.Text = "Listo - Ingresa tu key"
+        status.TextColor3 = Color3.fromRGB(120, 220, 120)
 
     local function attemptActivate()
         local key = input.Text
         if not validateKeyFormat(key) then
-            status.Text = "Formato invalido. Usa: STANIC-XXXX-XXXX-XXXX"
+            status.Text = "Key invalida. Usa la key proporcionada."
             status.TextColor3 = RED
             return
         end
-        status.Text = "Validando con API..."
+        status.Text = "Validando..."
         status.TextColor3 = Color3.fromRGB(255, 220, 100)
 
         task.spawn(function()
@@ -531,7 +499,7 @@ else
                 task.wait(0.8)
                 keyGui:Destroy()
             else
-                status.Text = "Key invalida o API offline. Genera una en tu dashboard Netlify."
+                status.Text = "Key invalida. Contacta al owner."
                 status.TextColor3 = RED
                 input.Text = ""
             end
