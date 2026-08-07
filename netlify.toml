@@ -1,3 +1,10 @@
 [build]
-  publish = "public"
   functions = "func/functions"
+
+# Permitir que GitHub Pages (cualquier origen) consuma las funciones
+[[headers]]
+  for = "/.func/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"

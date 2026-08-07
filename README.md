@@ -1,38 +1,51 @@
 # Nash.exe — Vault API & Voice Panel
 
-Sistema de licencias (key system) + panel de voz para Roblox, desplegado en Netlify.
+Sistema de licencias (key system) + panel de voz para Roblox.
+Frontend estático en **GitHub Pages** + backend de API en **Netlify Functions**.
 
-## Estructura
+## Arquitectura
 
 ```
 Satanic_Nash/
-├── public/                    # Sitio estático (Netlify publish)
-│   ├── index.html             # Login de owner
-│   └── dashboard.html         # Panel de gestión de keys
-├── func/functions/            # Netlify Functions (API)
-│   ├── auth.js                # POST /.func/functions/auth      - login owner
-│   ├── keys.js                # GET/POST /.func/functions/keys  - CRUD de keys
-│   └── validate.js            # POST /.func/functions/validate  - validación key + HWID
-├── satanic.lua                # Script de Roblox (ejecutor)
-├── server.js                  # Servidor local de desarrollo (opcional)
-├── netlify.toml               # Config de build de Netlify
+├── index.html              # Panel de owner (GitHub Pages) — raíz del repo
+├── dashboard.html          # Panel alternativo de gestión (GitHub Pages)
+├── satanic.lua             # Script de Roblox (ejecutor)
+├── func/functions/         # Backend API (Netlify Functions, desplegado en Netlify)
+│   ├── auth.js             # POST /.func/functions/auth      - login owner
+│   ├── keys.js             # GET/POST /.func/functions/keys  - CRUD de keys
+│   └── validate.js         # POST /.func/functions/validate  - validación key + HWID
+├── netlify.toml            # Config de Netlify (functions + CORS)
+├── server.js               # Servidor local de desarrollo (opcional)
 └── package.json
 ```
 
-## Despliegue en Netlify
+## Despliegue
 
-1. Sube este repositorio a GitHub.
-2. En Netlify: **New site from Git** → selecciona el repo.
-3. Build settings se detectan automáticamente desde `netlify.toml`:
-   - Publish directory: `public`
-   - Functions: `func/functions`
-4. Configura variables de entorno:
+### 1. GitHub Pages (frontend)
+- `index.html` y `dashboard.html` están en la **raíz** del repo, así que GitHub Pages los sirve directamente.
+- En Settings → Pages → Source: `Deploy from a branch` → `main` / root `/`.
+
+### 2. Netlify Functions (backend / API)
+1. En Netlify: **New site from Git** → selecciona este repo.
+2. La configuración se lee de `netlify.toml` (functions dir: `func/functions`).
+3. Configura variable de entorno:
 
    | Variable | Descripción |
    |----------|-------------|
-   | `OWNER_SECRET` | Contraseña del login de owner |
+   | `OWNER_SECRET` | Contraseña de auth (fallback `nash1234`) |
 
-5. Deploy.
+4. Deploy.
+
+### 3. Conectar frontend al backend
+En `index.html`, `dashboard.html` (constante `API_BASE`) **y en `satanic.lua`** (línea 38), reemplaza `TU-SITIO` por tu dominio Netlify:
+
+```js
+const API_BASE = 'https://tu-sitio.netlify.app/.func/functions';
+```
+
+```lua
+local API_BASE = "https://tu-sitio.netlify.app/.func/functions"
+```
 
 ## API Endpoints (Netlify Functions)
 
@@ -43,15 +56,11 @@ Satanic_Nash/
 | `POST` | `/.func/functions/keys` | Crear / resetear / eliminar keys |
 | `POST` | `/.func/functions/auth` | Login de owner |
 
-## Configurar el script Lua
+El CORS está habilitado en `netlify.toml` para permitir que el frontend (GitHub Pages) consuma las funciones desde cualquier origen.
 
-En `satanic.lua` línea 38, reemplaza `TU-SITIO` con tu dominio de Netlify:
+## Script Lua
 
-```lua
-local API_BASE = "https://tu-sitio.netlify.app/.func/functions"
-```
-
-El script hace un health check a la API cada 30 segundos y valida la key contra el endpoint `/validate`.
+`Satanic.lua` hace un health check a la API cada 30 segundos y valida la key contra el endpoint `/validate`. El key system está centrado, acepta solo Enter, y no muestra la URL del backend.
 
 ## Uso local (opcional)
 
@@ -60,4 +69,4 @@ npm install
 npm start
 ```
 
-Servidor local en `http://localhost:3000` solo para desarrollo (usa `keys.json` como base de datos).
+` server.js` corre en `http://localhost:3000` solo para desarrollo (usa `keys.json`).

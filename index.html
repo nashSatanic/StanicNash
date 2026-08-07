@@ -287,8 +287,14 @@
             }, 2000);
         }
 
+        // Backend externo (Netlify Functions). CHANGE to your site URL.
+        const API_BASE = 'https://TU-SITIO.netlify.app/.func/functions';
+        const OWNER_TOKEN = 'nash_owner_authenticated_token';
+
         async function loadKeys() {
-            const res = await fetch('/api/keys');
+            const res = await fetch(`${API_BASE}/keys?action=list`, {
+                headers: { 'Authorization': `Bearer ${OWNER_TOKEN}` }
+            });
             const data = await res.json();
             const tbody = document.getElementById('keys-table');
             
@@ -329,19 +335,20 @@
 
         document.getElementById('btn-create').addEventListener('click', async () => {
             const duration = document.getElementById('duration').value;
-            await fetch('/api/generate', {
+            const days = Math.round((parseInt(duration) / (24 * 60 * 60 * 1000)) || 30);
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ duration: parseInt(duration) })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
+                body: JSON.stringify({ action: 'create', days })
             });
             loadKeys();
         });
 
         async function resetHwid(key) {
-            await fetch('/api/reset-hwid', {
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
+                body: JSON.stringify({ action: 'reset', key })
             });
             loadKeys();
         }
@@ -353,10 +360,10 @@
                 await new Promise(r => setTimeout(r, 330));
             }
             
-            await fetch('/api/revoke', {
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OWNER_TOKEN}` },
+                body: JSON.stringify({ action: 'delete', key })
             });
             loadKeys();
         }

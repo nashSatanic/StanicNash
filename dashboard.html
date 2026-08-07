@@ -154,6 +154,8 @@
     </div>
 
     <script>
+        // Backend externo (Netlify Functions). CHANGE to your site URL.
+        const API_BASE = 'https://TU-SITIO.netlify.app/.func/functions';
         const token = localStorage.getItem('nash_token');
         if(!token) window.location.href = '/';
 
@@ -194,7 +196,7 @@
 
         // Funciones del Dashboard (CRUD)
         async function loadKeys() {
-            const res = await fetch('/.func/functions/keys?action=list', {
+            const res = await fetch(`${API_BASE}/keys?action=list`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if(res.status === 401) { localStorage.removeItem('nash_token'); window.location.href='/'; return; }
@@ -215,7 +217,7 @@
                         <td>${k.hwid ? `<span title="${k.hwid}">${k.hwid.substring(0, 15)}...</span>` : '<span style="color:#777;">Sin vincular</span>'}</td>
                         <td>${k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Sin límite'} ${expired ? '<span style="color:#ff6b6b; font-weight:bold;">(Expirada)</span>' : ''}</td>
                         <td>
-                            ${k.hwid ? `<button onclick="resetHwid('${k.key}')" style="margin-right: 5px;">Reset HWID</button>` : ''}
+                            ${k.hwid ? `<button onclick="resetKey('${k.key}')" style="margin-right: 5px;">Reset HWID</button>` : ''}
                             <button class="btn-danger" onclick="deleteKey('${k.key}')">Eliminar</button>
                         </td>
                     </tr>
@@ -225,7 +227,7 @@
 
         document.getElementById('btn-create').addEventListener('click', async () => {
             const days = document.getElementById('days').value;
-            await fetch('/.func/functions/keys', {
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ action: 'create', days: parseInt(days) })
@@ -233,8 +235,8 @@
             loadKeys();
         });
 
-        async function resetHwid(key) {
-            await fetch('/.func/functions/keys', {
+        async function resetKey(key) {
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ action: 'reset', key })
@@ -244,7 +246,7 @@
 
         async function deleteKey(key) {
             if(!confirm(`¿Deseas eliminar permanentemente la key: ${key}?`)) return;
-            await fetch('/.func/functions/keys', {
+            await fetch(`${API_BASE}/keys`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ action: 'delete', key })
