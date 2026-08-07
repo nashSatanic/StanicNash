@@ -35,7 +35,7 @@ end
 -- ==========================================
 -- API + HTTP (Netlify)
 -- ==========================================
-local API_BASE = "https://TU-SITIO.netlify.app/.func/functions" -- CAMBIA ESTO A TU URL DE NETLIFY
+local API_BASE = "https://nashsatanic.netlify.app/.func/functions" -- CAMBIA ESTO A TU URL DE NETLIFY
 
 local httpfunc = request or http_request or (syn and syn.request) or (fluxus and fluxus.request) or nil
 
