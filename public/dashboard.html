@@ -127,7 +127,6 @@
     <div class="wrapper">
         <header>
             <h1>// control panel</h1>
-            <button onclick="localStorage.removeItem('nash_owner_token'); window.location.reload();">Cerrar Sesión</button>
         </header>
 
         <div class="controls">
@@ -194,39 +193,12 @@
         // ============================================================
         // NETLIFY API — Backend: listar, crear, reset, eliminar keys
         // ============================================================
-        function getToken() {
-            return localStorage.getItem('nash_owner_token');
-        }
-
         async function api(path, opts = {}) {
-            const token = getToken();
             const res = await fetch(`/.netlify/functions/${path}`, {
                 ...opts,
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers||{}) }
+                headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }
             });
             return { status: res.status, body: await res.json().catch(() => ({})) };
-        }
-
-        async function ensureAuth() {
-            if(getToken()) return true;
-            for(let attempt = 0; attempt < 3; attempt++) {
-                const secret = prompt('Ingresa la contraseña de owner:');
-                if(secret === null) return false;
-                try {
-                    const res = await fetch('/.netlify/functions/auth', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ secret })
-                    });
-                    const data = await res.json();
-                    if(data.token) {
-                        localStorage.setItem('nash_owner_token', data.token);
-                        return true;
-                    }
-                    alert('Contraseña incorrecta.');
-                } catch(e) { alert('Error de conexión con el backend.'); return false; }
-            }
-            return false;
         }
 
         // Cargar keys desde el backend
@@ -258,7 +230,6 @@
         }
 
         document.getElementById('btn-create').addEventListener('click', async () => {
-            if(!getToken() && !(await ensureAuth())) return;
             const days = parseInt(document.getElementById('days').value) || 30;
             const duration = days === 0 ? 0 : days * 24 * 60 * 60 * 1000;
             await api('keys', { method: 'POST', body: JSON.stringify({ action: 'create', duration }) });
@@ -275,7 +246,6 @@
             loadKeys();
         }
 
-        if(!getToken()) { ensureAuth(); }
         loadKeys();
     </script>
 </body>

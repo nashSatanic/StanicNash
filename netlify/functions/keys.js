@@ -1,27 +1,16 @@
 import { getStore } from "@netlify/blobs";
 
-const AUTHORIZED_TOKEN = process.env.OWNER_TOKEN || "nash_owner_token";
-
 const corsHeaders = () => ({
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
 });
 
-const checkAuth = (headers) => {
-  const auth = headers.authorization || "";
-  return auth === `Bearer ${AUTHORIZED_TOKEN}`;
-};
-
 const part = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 const genKey = () => part();
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: corsHeaders() };
-
-  if (!checkAuth(event.headers)) {
-    return { statusCode: 401, headers: corsHeaders(), body: JSON.stringify({ error: "Unauthorized" }) };
-  }
 
   const store = getStore("nash_keys");
 

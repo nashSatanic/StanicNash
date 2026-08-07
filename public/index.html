@@ -186,7 +186,6 @@
     <div class="wrapper">
         <header>
             <h1>// control panel</h1>
-            <button onclick="localStorage.removeItem('nash_owner_token'); window.location.reload();">Cerrar Sesión</button>
         </header>
 
         <div class="controls">
@@ -288,8 +287,7 @@
         }
 
         async function loadKeys() {
-            const token = getToken();
-            const { body } = await api('keys', { headers: { 'Authorization': `Bearer ${token}` } });
+            const { body } = await api('keys');
             const data = { keys: body.keys || [] };
             const tbody = document.getElementById('keys-table');
             
@@ -331,19 +329,10 @@
         // ============================================================
         // NETLIFY API — Backend: listar, crear, reset, eliminar keys
         // ============================================================
-        const TOKEN = localStorage.getItem('nash_owner_token') || '';
-
-        function getToken() {
-            let t = localStorage.getItem('nash_owner_token');
-            if(!t) return null;
-            return t;
-        }
-
         async function api(path, opts = {}) {
-            const token = getToken();
             const res = await fetch(`/.netlify/functions/${path}`, {
                 ...opts,
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers||{}) }
+                headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }
             });
             return { status: res.status, body: await res.json().catch(() => ({})) };
         }
@@ -358,32 +347,7 @@
             return `STANIC-${part()}-${part()}-${part()}`;
         }
 
-        async function ensureAuth() {
-            let t = getToken();
-            if(t) return true;
-
-            for(let attempt = 0; attempt < 3; attempt++) {
-                const secret = prompt('Ingresa la contraseña de owner:');
-                if(secret === null) return false;
-                try {
-                    const res = await fetch('/.netlify/functions/auth', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ secret })
-                    });
-                    const data = await res.json();
-                    if(data.token) {
-                        localStorage.setItem('nash_owner_token', data.token);
-                        return true;
-                    }
-                    alert('Contraseña incorrecta.');
-                } catch(e) { alert('Error de conexión con el backend.'); return false; }
-            }
-            return false;
-        }
-
         document.getElementById('btn-create').addEventListener('click', async () => {
-            if(!getToken() && !(await ensureAuth())) return;
             const durationMs = parseInt(document.getElementById('duration').value);
             const r = await api('keys', {
                 method: 'POST',
