@@ -1,0 +1,9 @@
+{
+  "name": "satanic-nash",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nash.exe — Key system API & dashboard (Netlify)",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}
